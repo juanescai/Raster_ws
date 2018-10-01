@@ -31,7 +31,7 @@ Complete la tabla:
 
 | Integrante | github nick |
 |------------|-------------|
-|            |             |
+|Juan Esteban Caicedo            |juanescai             |
 
 ## Discusión
 
