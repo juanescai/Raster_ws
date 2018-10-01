@@ -9,9 +9,13 @@ Frame frame;
 Vector v1, v2, v3;
 // timing
 TimingTask spinningTask;
-boolean yDirection;
+boolean yDirection,antialiasing,shading;
 // scaling is a power of 2
 int n = 4;
+int anti = 1;
+color c1 = color(255,0,0);//color for vertex 1
+color c2 = color(0,255,0);//color for vertex 2
+color c3 = color(0,0,255);//color for vertex 3
 
 // 2. Hints
 boolean triangleHint = true;
@@ -23,10 +27,10 @@ String renderer = P3D;
 
 void setup() {
   //use 2^n to change the dimensions
-  size(1024, 1024, renderer);
+  size(1024, 810, renderer);
   scene = new Scene(this);
   if (scene.is3D())
-    scene.setType(Scene.Type.ORTHOGRAPHIC);
+  scene.setType(Scene.Type.ORTHOGRAPHIC);
   scene.setRadius(width/2);
   scene.fitBallInterpolation();
 
@@ -44,7 +48,7 @@ void setup() {
     @Override
     public void execute() {
       scene.eye().orbit(scene.is2D() ? new Vector(0, 0, 1) :
-        yDirection ? new Vector(0, 1, 0) : new Vector(1, 0, 0), PI / 100);
+      yDirection ? new Vector(0, 1, 0) : new Vector(1, 0, 0), PI / 100);
     }
   };
   scene.registerTask(spinningTask);
@@ -60,9 +64,9 @@ void draw() {
   background(0);
   stroke(0, 255, 0);
   if (gridHint)
-    scene.drawGrid(scene.radius(), (int)pow(2, n));
+  scene.drawGrid(scene.radius(), (int)pow(2, n));
   if (triangleHint)
-    drawTriangleHint();
+  drawTriangleHint();
   pushMatrix();
   pushStyle();
   scene.applyTransformation(frame);
@@ -76,12 +80,67 @@ void draw() {
 void triangleRaster() {
   // frame.location converts points from world to frame
   // here we convert v1 to illustrate the idea
+  float begin=350-(width/pow(2, n))/2;
+  float area = edgeFunction(v1, v2, v3); 
+  for(float i=-begin;i<=begin;i=i+width/pow(2, n)){
+    for(float j=-begin;j<=begin;j=j+width/pow(2, n)){
+      Vector p = new Vector(i,j);
+      float w0 = edgeFunction(v2, v3, p);
+      float w1 = edgeFunction(v3, v1, p); 
+      float w2 = edgeFunction(v1, v2, p); 
+      
+      if (w0 >= 0 && w1 >= 0 && w2 >= 0) {
+        w0 /= area;
+        w1 /= area; 
+        w2 /= area;
+        pushStyle();
+        popStyle();
+      }
+      
+    }
+  }
+  
   if (debug) {
     pushStyle();
-    stroke(255, 255, 0, 125);
-    point(round(frame.location(v1).x()), round(frame.location(v1).y()));
+    stroke(255, 0, 0, 125);
+    popStyle();    
+    pushStyle();
+    stroke(255, 255, 255, 125);
     popStyle();
   }
+  
+  pushStyle();
+  stroke(125, 125, 125, 125);
+  int potencia = (int) pow(2,n-1);
+   popStyle();
+   float shadeArea = edgeFunction(frame.location(v1).x(), frame.location(v1).y(), frame.location(v2).x(), frame.location(v2).y(), frame.location(v3).x(), frame.location(v3).y() );
+    for(int  i = -potencia ; i < potencia; i++ ){
+      for(int j = -potencia; j < potencia; j++){
+        float K_v1v2 = edgeFunction(frame.location(v1).x(), frame.location(v1).y(), frame.location(v2).x(), frame.location(v2).y(), i, j ),
+              K_v2v3 = edgeFunction(frame.location(v2).x(), frame.location(v2).y(), frame.location(v3).x(), frame.location(v3).y(), i, j ),
+              K_v3v1 = edgeFunction(frame.location(v3).x(), frame.location(v3).y(), frame.location(v1).x(), frame.location(v1).y(), i, j );
+          if ((K_v1v2 >=0  && K_v2v3 >= 0 && K_v3v1 >= 0) || (K_v1v2 <=0  && K_v2v3 <=0 && K_v3v1 <=0) ){
+                pushStyle();
+                colorMode(RGB, 1);
+                stroke( K_v1v2/shadeArea, K_v2v3/shadeArea, K_v3v1/shadeArea);
+                point(i,j);
+                popStyle();
+              }   
+      }
+    
+    }
+}
+
+float edgeFunction(Vector a, Vector b, Vector c) {
+  float ax = a.x(), ay = a.y();
+  float bx = b.x(),  by = b.y();
+  float cx = c.x(), cy = c.y();
+
+  return (cx - ax) * (by - ay) - (cy - ay) * (bx - ax);
+}
+float edgeFunction( float a_x,  float a_y , float b_x, float b_y, float c_x,  float c_y) 
+{ 
+    return (((c_x - a_x) * (b_y - a_y)) - ((c_y - a_y) * (b_x - a_x))); 
 }
 
 void randomizeTriangle() {
@@ -130,4 +189,8 @@ void keyPressed() {
       spinningTask.run(20);
   if (key == 'y')
     yDirection = !yDirection;
+  if (key == 'a')
+    antialiasing = !antialiasing;
+  if (key == 's')
+    shading = !shading;
 }
